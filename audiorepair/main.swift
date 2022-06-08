@@ -85,9 +85,9 @@ func createFile(
 func getFileInformation(audioFile: AudioFileID) throws -> NSDictionary {
     var size: UInt32 =  0
     var status = AudioFileGetPropertyInfo(audioFile, kAudioFilePropertyInfoDictionary, &size, nil)
-
-    if status != noErr {
-        print("An error occurred while getting the info dictionary property size: Error code \(status).")
+    
+    guard status == noErr else {
+        throw Errors.FileInformationRetrievalError(status: status)
     }
 
     var infoDictionary = NSDictionary()
