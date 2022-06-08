@@ -101,10 +101,34 @@ func getFileInformation(audioFile: AudioFileID) throws -> NSDictionary {
 }
 
 
+/**
+ Extracts the Audio Stream Basic Description from am Audio File ID
+ 
+ - Parameter audioFile: the audio file
+ 
+ - Returns: the audio stream basic description
+ */
+func getAudioStreamDescriptionFromAudioFile(
+    _ audioFile: AudioFileID
+) -> AudioStreamBasicDescription {
+    var size: UInt32 =  0
+    AudioFileGetPropertyInfo(audioFile, kAudioFilePropertyDataFormat, &size, nil)
+
+    var result: AudioStreamBasicDescription = AudioStreamBasicDescription.init();
+    AudioFileGetProperty(audioFile, kAudioFilePropertyDataFormat, &size, &result)
+
+    return result;
+}
+
+
 
 let inputFilePath: String = "/Users/daniel/Documentos/Rips/DUB.wav"
 var audioFile: AudioFileID
 var infoDictionary = NSDictionary()
+
+
+
+// Starts here:
 
 do {
     try audioFile = openFile(filePath: inputFilePath)
@@ -121,7 +145,7 @@ catch Errors.FileInformationRetrievalError(let status) {
 
 print(infoDictionary);
 
-// read all audio  units (this isn't neededd for now
+// read all audio  units (this isn't needed for now
 var inDesc = AudioComponentDescription(componentType: OSType(),
                                     componentSubType: OSType(),
                                componentManufacturer: OSType(),
@@ -132,17 +156,9 @@ print ("Found \(numberOfAudioUnits) audio units")
 
 
 
-
+// open output file
 var outputAudioFile: AudioFileID
-var outputFileDescription: AudioStreamBasicDescription = AudioStreamBasicDescription()
-
-do {
-    try outputAudioFile = createFile(filePath: "/Users/daniel/output.wav", description: &outputFileDescription)
-}
-catch {
-    print ("Error open destiny file.")
-    exit(-1)
-}
+var outputFileDescription: AudioStreamBasicDescription = getAudioStreamDescriptionFromAudioFile(audioFile);
 
 
 
@@ -154,11 +170,22 @@ var currentPacket = 0;
 var ioNumPackets: UInt32 = 1;
 var outBuffer: UnsafeMutableRawPointer = UnsafeMutableRawPointer.allocate(byteCount: Int(numBytes), alignment: 1);
 
+do {
+    try outputAudioFile = createFile(filePath: "/Users/daniel/output.wav", description: &outputFileDescription)
+}
+catch {
+    print ("Error open destiny file.")
+    exit(-1)
+}
+
+
 while AudioFileReadPacketData(audioFile, false, &numBytes, &packetDescription, Int64(currentPacket), &ioNumPackets, outBuffer) == noErr {
     
     AudioFileWritePackets(outputAudioFile, false, numBytes, &packetDescription, Int64(currentPacket), &ioNumPackets, outBuffer)
     currentPacket+=1
 }
+
+print("\(currentPacket+1) packets processed")
 
 
 AudioFileClose(audioFile)
